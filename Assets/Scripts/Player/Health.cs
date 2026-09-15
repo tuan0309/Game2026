@@ -2,134 +2,138 @@ using UnityEngine;
 
 public class Health : MonoBehaviour
 {
-    [Header("References")]
-    [SerializeField] private CharacterStats characterStats;
+    [Header("Health")]
+    [SerializeField] private int maxHealth = 100;
 
-    [Header("Animation")]
+    [Header("References")]
     [SerializeField] private PlayerAnimator playerAnimator;
 
-    [Header("State Machine")]
-    [SerializeField] private PlayerStateMachine stateMachine;
+    private int currentHealth;
+    private bool isDead;
 
-    private float currentHealth;
-
-    public float CurrentHealth => currentHealth;
-
-    public float MaxHealth
-    {
-        get
-        {
-            if (characterStats == null)
-            {
-                return 0f;
-            }
-
-            return characterStats.MaxHealth;
-        }
-    }
-
-    public bool IsDead => currentHealth <= 0f;
+    public int CurrentHealth => currentHealth;
+    public int MaxHealth => maxHealth;
+    public bool IsDead => isDead;
 
     private void Awake()
     {
-        if (characterStats == null)
+        currentHealth = maxHealth;
+
+        if (playerAnimator == null)
         {
-            characterStats = GetComponent<CharacterStats>();
+            playerAnimator =
+                GetComponent<PlayerAnimator>();
         }
 
         if (playerAnimator == null)
         {
-            playerAnimator = GetComponent<PlayerAnimator>();
+            playerAnimator =
+                GetComponentInChildren<PlayerAnimator>();
         }
 
-        if (stateMachine == null)
+        if (playerAnimator == null)
         {
-            stateMachine = GetComponent<PlayerStateMachine>();
-        }
-
-        if (characterStats == null)
-        {
-            Debug.LogError(
-                "CharacterStats is missing on Player!"
+            Debug.LogWarning(
+                "Health: PlayerAnimator not found!",
+                this
             );
-
-            return;
         }
-
-        currentHealth = MaxHealth;
     }
 
-    public void TakeDamage(float damage)
+    public void TakeDamage(int damage)
     {
-        if (IsDead)
+        if (isDead)
         {
             return;
         }
 
-        if (damage <= 0f)
+        if (damage <= 0)
         {
             return;
         }
 
         currentHealth -= damage;
 
-        currentHealth = Mathf.Max(
-            currentHealth,
-            0f
-        );
+        currentHealth =
+            Mathf.Max(
+                currentHealth,
+                0
+            );
 
         Debug.Log(
-            "Player Health: " +
+            "PLAYER DAMAGE: " +
+            damage +
+            " | HP: " +
             currentHealth +
-            " / " +
-            MaxHealth
+            "/" +
+            maxHealth
         );
 
-        if (IsDead)
+        // =========================
+        // DEAD
+        // =========================
+
+        if (currentHealth <= 0)
         {
             Die();
+            return;
+        }
+
+        // =========================
+        // HIT REACTION
+        // =========================
+
+        if (playerAnimator != null)
+        {
+            playerAnimator.SetHit();
+        }
+        else
+        {
+            Debug.LogError(
+                "Health: PlayerAnimator reference is NULL!",
+                this
+            );
         }
     }
 
-    public void Heal(float amount)
+    private void Die()
     {
-        if (IsDead)
+        if (isDead)
         {
             return;
         }
 
-        if (amount <= 0f)
+        isDead = true;
+
+        currentHealth = 0;
+
+        if (playerAnimator != null)
+        {
+            playerAnimator.SetDead();
+        }
+
+        Debug.Log("PLAYER DEAD");
+    }
+
+    // Dùng để test hoặc hồi máu sau này
+    public void Heal(int amount)
+    {
+        if (isDead)
+        {
+            return;
+        }
+
+        if (amount <= 0)
         {
             return;
         }
 
         currentHealth += amount;
 
-        currentHealth = Mathf.Min(
-            currentHealth,
-            MaxHealth
-        );
-
-        Debug.Log(
-            "Player Health: " +
-            currentHealth +
-            " / " +
-            MaxHealth
-        );
-    }
-
-    private void Die()
-    {
-        Debug.Log("Player Died!");
-
-        if (stateMachine != null)
-        {
-            stateMachine.SetDead();
-        }
-
-        if (playerAnimator != null)
-        {
-            playerAnimator.SetDead();
-        }
+        currentHealth =
+            Mathf.Min(
+                currentHealth,
+                maxHealth
+            );
     }
 }

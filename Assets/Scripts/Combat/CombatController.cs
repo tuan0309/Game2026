@@ -9,12 +9,7 @@ public class CombatController : MonoBehaviour
     [SerializeField] private PlayerStateMachine stateMachine;
     [SerializeField] private PlayerAnimator playerAnimator;
 
-    [Header("Attack Settings")]
-    [SerializeField] private float attackDuration = 0.8f;
-
     private float lastAttackTime;
-    private float attackEndTime;
-
     private bool isAttacking;
 
     private void Awake()
@@ -65,8 +60,6 @@ public class CombatController : MonoBehaviour
         {
             TryAttack();
         }
-
-        UpdateAttack();
     }
 
     private void TryAttack()
@@ -94,11 +87,7 @@ public class CombatController : MonoBehaviour
         }
 
         lastAttackTime = Time.time;
-
         isAttacking = true;
-
-        attackEndTime =
-            Time.time + attackDuration;
 
         if (stateMachine != null)
         {
@@ -112,31 +101,40 @@ public class CombatController : MonoBehaviour
             playerAnimator.SetAttack();
         }
 
-        if (swordHitbox != null)
-        {
-            swordHitbox.StartAttack();
-        }
-
         Debug.Log("ATTACK START");
     }
 
-    private void UpdateAttack()
+    // Gọi bằng Animation Event
+    public void EnableSwordHitbox()
     {
         if (!isAttacking)
         {
             return;
         }
 
-        if (Time.time < attackEndTime)
+        if (swordHitbox != null)
+        {
+            swordHitbox.StartAttack();
+        }
+    }
+
+    // Gọi bằng Animation Event
+    public void DisableSwordHitbox()
+    {
+        if (swordHitbox != null)
+        {
+            swordHitbox.EndAttack();
+        }
+    }
+
+    // Gọi ở cuối animation Attack
+    public void EndAttack()
+    {
+        if (!isAttacking)
         {
             return;
         }
 
-        EndAttack();
-    }
-
-    private void EndAttack()
-    {
         isAttacking = false;
 
         if (swordHitbox != null)

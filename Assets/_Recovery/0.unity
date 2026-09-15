@@ -1024,8 +1024,8 @@ GameObject:
   m_Component:
   - component: {fileID: 819022215}
   - component: {fileID: 819022218}
-  - component: {fileID: 819022217}
   - component: {fileID: 819022216}
+  - component: {fileID: 819022219}
   m_Layer: 0
   m_Name: SwordHitbox
   m_TagString: Untagged
@@ -1075,19 +1075,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &819022217
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 819022214}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 49f0a60a931ccac4bb896395438bce23, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SwordHitbox
-  weapon: {fileID: 0}
 --- !u!65 &819022218
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1107,8 +1094,21 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.29919615, y: 1.5584832, z: 0.24317111}
-  m_Center: {x: 0.030935861, y: 1.2064321, z: -0.0026536516}
+  m_Size: {x: 0.41932958, y: 0.8033683, z: 0.10587909}
+  m_Center: {x: -0.029130816, y: 0.7731023, z: 0.0016368406}
+--- !u!114 &819022219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 819022214}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 260a2dfdfdd45f14990e9d9c64d5a62f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyWeaponHitbox
+  damage: 10
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -1610,6 +1610,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimator
   animator: {fileID: 1621893085}
+  enemyController: {fileID: 0}
+  weaponHitbox: {fileID: 0}
 --- !u!114 &1621893087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1624,11 +1626,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   player: {fileID: 410377044}
   enemyAnimator: {fileID: 1621893086}
-  enemyHealth: {fileID: 1621893083}
   moveSpeed: 2
   rotationSpeed: 8
   detectionRange: 8
-  stopDistance: 1.5
+  attackRange: 1.8
+  attackCooldown: 1.5
 --- !u!1001 &1634363936
 PrefabInstance:
   m_ObjectHideFlags: 0

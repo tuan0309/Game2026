@@ -10,17 +10,18 @@ public class SwordHitbox : MonoBehaviour
 
     private bool isAttacking;
 
-    // Enemy đã bị đánh trong lần Attack hiện tại
     private readonly HashSet<EnemyHealth> hitEnemies =
         new HashSet<EnemyHealth>();
 
     private void Awake()
     {
-        hitboxCollider = GetComponent<Collider>();
+        hitboxCollider =
+            GetComponent<Collider>();
 
         if (weapon == null)
         {
-            weapon = GetComponentInParent<Weapon>();
+            weapon =
+                GetComponentInParent<Weapon>();
         }
 
         SetHitbox(false);
@@ -33,16 +34,26 @@ public class SwordHitbox : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        isAttacking = false;
+
+        hitEnemies.Clear();
+
+        SetHitbox(false);
+    }
+
     public void StartAttack()
     {
         isAttacking = true;
 
-        // Reset danh sách Enemy cho đòn đánh mới
         hitEnemies.Clear();
 
         SetHitbox(true);
 
-        Debug.Log("Sword Hitbox ON");
+        Debug.Log(
+            "Sword Hitbox ON"
+        );
     }
 
     public void EndAttack()
@@ -51,28 +62,37 @@ public class SwordHitbox : MonoBehaviour
 
         SetHitbox(false);
 
-        Debug.Log("Sword Hitbox OFF");
+        Debug.Log(
+            "Sword Hitbox OFF"
+        );
     }
 
-    private void SetHitbox(bool active)
+    private void SetHitbox(
+        bool active
+    )
     {
         if (hitboxCollider == null)
         {
             return;
         }
 
-        hitboxCollider.enabled = active;
+        hitboxCollider.enabled =
+            active;
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(
+        Collider other
+    )
     {
         if (!isAttacking)
         {
             return;
         }
 
-        // Không đánh Player
-        if (other.GetComponentInParent<PlayerController>() != null)
+        if (
+            other.GetComponentInParent<PlayerController>()
+            != null
+        )
         {
             return;
         }
@@ -85,7 +105,6 @@ public class SwordHitbox : MonoBehaviour
             return;
         }
 
-        // Enemy này đã bị đánh trong Attack hiện tại
         if (hitEnemies.Contains(enemyHealth))
         {
             return;
@@ -100,10 +119,8 @@ public class SwordHitbox : MonoBehaviour
             return;
         }
 
-        // Đánh dấu Enemy đã bị trúng
         hitEnemies.Add(enemyHealth);
 
-        // Gây damage
         enemyHealth.TakeDamage(
             weapon.Damage
         );

@@ -1,219 +1,225 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Character Data")]
-    [SerializeField] private CharacterData characterData;
-
-    [Header("Animation")]
+    [Header("References")]
+    [SerializeField] private CharacterController characterController;
     [SerializeField] private PlayerAnimator playerAnimator;
 
-    [Header("State Machine")]
-    [SerializeField] private PlayerStateMachine stateMachine;
+    [Header("Movement")]
+    [SerializeField] private float walkSpeed = 3f;
+    [SerializeField] private float sprintSpeed = 6f;
 
-    [Header("Mouse Rotation")]
-    [SerializeField] private float mouseSensitivity = 0.08f;
+    [Header("Rotation")]
+    [SerializeField] private float rotationSpeed = 10f;
 
     [Header("Gravity")]
     [SerializeField] private float gravity = -20f;
 
-    private CharacterController controller;
-
     private Vector2 moveInput;
-    private Vector3 velocity;
-
-    private bool isSprinting;
+    private float verticalVelocity;
 
     private void Awake()
     {
-        controller = GetComponent<CharacterController>();
+        if (characterController == null)
+        {
+            characterController = GetComponent<CharacterController>();
+        }
 
         if (playerAnimator == null)
         {
             playerAnimator = GetComponent<PlayerAnimator>();
         }
 
-        if (stateMachine == null)
-        {
-            stateMachine = GetComponent<PlayerStateMachine>();
-        }
-
-        if (characterData == null)
+        if (characterController == null)
         {
             Debug.LogError(
-                "CharacterData is missing on Player!"
+                "PlayerController: CharacterController not found!",
+                this
             );
         }
 
         if (playerAnimator == null)
         {
-            Debug.LogError(
-                "PlayerAnimator is missing on Player!"
-            );
-        }
-
-        if (stateMachine == null)
-        {
-            Debug.LogError(
-                "PlayerStateMachine is missing on Player!"
+            Debug.LogWarning(
+                "PlayerController: PlayerAnimator not found!",
+                this
             );
         }
     }
 
     private void Update()
     {
-        RotateWithMouse();
-        Move();
-        ApplyGravity();
-        UpdateAnimation();
-        UpdateState();
+        ReadInput();
+        HandleMovement();
     }
 
-    public void OnMove(InputAction.CallbackContext context)
+    private void ReadInput()
     {
-        moveInput = context.ReadValue<Vector2>();
+        if (Keyboard.current == null)
+        {
+            moveInput = Vector2.zero;
+            return;
+        }
+
+        float horizontal = 0f;
+        float vertical = 0f;
+
+        if (Keyboard.current.aKey.isPressed)
+        {
+            horizontal -= 1f;
+        }
+
+        if (Keyboard.current.dKey.isPressed)
+        {
+            horizontal += 1f;
+        }
+
+        if (Keyboard.current.sKey.isPressed)
+        {
+            vertical -= 1f;
+        }
+
+        if (Keyboard.current.wKey.isPressed)
+        {
+            vertical += 1f;
+        }
+
+        moveInput = new Vector2(horizontal, vertical);
+
+        if (moveInput.sqrMagnitude > 1f)
+        {
+            moveInput.Normalize();
+        }
     }
 
-    public void OnSprint(InputAction.CallbackContext context)
+    private void HandleMovement()
     {
-        isSprinting = context.ReadValueAsButton();
-    }
-
-    private void RotateWithMouse()
-    {
-        // Khi chết vẫn cho phép camera/player rotation.
-        if (Mouse.current == null)
+        if (characterController == null)
         {
             return;
         }
 
-        if (!Mouse.current.rightButton.isPressed)
+        bool isSprinting =
+            Keyboard.current != null &&
+            Keyboard.current.leftShiftKey.isPressed &&
+            moveInput.y > 0.01f;
+
+        float currentSpeed =
+            isSprinting
+                ? sprintSpeed
+                : walkSpeed;
+
+        Vector3 moveDirection =
+            CalculateMovementDirection();
+
+        // =========================
+        // ROTATION
+        // =========================
+
+        // Khi không bấm S thuần túy:
+        // W, A, D, W+A, W+D đều có thể xoay Player.
+        //
+        // Khi S:
+        // Player đi lùi nhưng giữ nguyên hướng mặt.
+        if (moveDirection.sqrMagnitude > 0.01f &&
+            moveInput.y >= 0f)
         {
-            return;
+            RotatePlayer(moveDirection);
         }
 
-        Vector2 mouseDelta =
-            Mouse.current.delta.ReadValue();
+        // =========================
+        // GRAVITY
+        // =========================
 
-        float mouseX = mouseDelta.x;
-
-        if (Mathf.Abs(mouseX) < 0.01f)
+        if (characterController.isGrounded &&
+            verticalVelocity < 0f)
         {
-            return;
+            verticalVelocity = -2f;
         }
 
-        float rotationAmount =
-            mouseX * mouseSensitivity;
+        verticalVelocity +=
+            gravity * Time.deltaTime;
 
-        transform.Rotate(
-            0f,
-            rotationAmount,
-            0f
+        // =========================
+        // MOVEMENT
+        // =========================
+
+        Vector3 velocity =
+            moveDirection *
+            currentSpeed;
+
+        velocity.y =
+            verticalVelocity;
+
+        characterController.Move(
+            velocity * Time.deltaTime
         );
+
+        // =========================
+        // ANIMATION
+        // =========================
+
+        if (playerAnimator != null)
+        {
+            playerAnimator.UpdateMovementAnimation(
+                moveInput,
+                isSprinting
+            );
+        }
     }
 
-    private void Move()
+    private Vector3 CalculateMovementDirection()
     {
-        // Player đã chết thì không được di chuyển.
-        if (stateMachine != null &&
-            stateMachine.CurrentState == PlayerState.Dead)
-        {
-            return;
-        }
+        Vector3 forward =
+            transform.forward;
 
-        if (characterData == null)
-        {
-            return;
-        }
+        Vector3 right =
+            transform.right;
 
-        Vector3 forward = transform.forward;
-        Vector3 right = transform.right;
+        forward.y = 0f;
+        right.y = 0f;
+
+        forward.Normalize();
+        right.Normalize();
 
         Vector3 direction =
             forward * moveInput.y +
             right * moveInput.x;
 
-        direction = Vector3.ClampMagnitude(
-            direction,
-            1f
-        );
-
-        if (direction.sqrMagnitude > 0.01f)
+        if (direction.sqrMagnitude > 1f)
         {
-            Quaternion targetRotation =
-                Quaternion.LookRotation(direction);
+            direction.Normalize();
+        }
 
-            transform.rotation = Quaternion.Slerp(
+        return direction;
+    }
+
+    private void RotatePlayer(Vector3 direction)
+    {
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.001f)
+        {
+            return;
+        }
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(
+                direction,
+                Vector3.up
+            );
+
+        transform.rotation =
+            Quaternion.Slerp(
                 transform.rotation,
                 targetRotation,
-                characterData.rotationSpeed *
-                Time.deltaTime
+                1f -
+                Mathf.Exp(
+                    -rotationSpeed *
+                    Time.deltaTime
+                )
             );
-        }
-
-        float currentSpeed =
-            isSprinting
-                ? characterData.runSpeed
-                : characterData.walkSpeed;
-
-        controller.Move(
-            direction *
-            currentSpeed *
-            Time.deltaTime
-        );
     }
-
-    private void UpdateAnimation()
-    {
-        if (playerAnimator == null)
-        {
-            return;
-        }
-
-        // Khi chết không cập nhật Speed nữa.
-        if (stateMachine != null &&
-            stateMachine.CurrentState == PlayerState.Dead)
-        {
-            return;
-        }
-
-        playerAnimator.UpdateMovementAnimation(
-            moveInput,
-            isSprinting
-        );
-    }
-
-    private void UpdateState()
-    {
-        if (stateMachine == null)
-        {
-            return;
-        }
-
-        stateMachine.UpdateMovementState(
-            moveInput,
-            isSprinting
-        );
-    }
-
-    private void ApplyGravity()
-    {
-        if (controller.isGrounded && velocity.y < 0f)
-        {
-            velocity.y = -2f;
-        }
-
-        velocity.y +=
-            gravity *
-            Time.deltaTime;
-
-        controller.Move(
-            velocity *
-            Time.deltaTime
-        );
-    }
-
-
 }
