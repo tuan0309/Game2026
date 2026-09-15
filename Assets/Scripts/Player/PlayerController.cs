@@ -4,21 +4,20 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement")]
-    [SerializeField] private float walkSpeed = 5f;
-    [SerializeField] private float runSpeed = 8f;
+    [Header("Character Data")]
+    [SerializeField] private CharacterData characterData;
 
-    [Header("Rotation")]
-    [SerializeField] private float rotationSpeed = 6f;
+    [Header("Animation")]
+    [SerializeField] private PlayerAnimator playerAnimator;
+
+    [Header("State Machine")]
+    [SerializeField] private PlayerStateMachine stateMachine;
 
     [Header("Mouse Rotation")]
     [SerializeField] private float mouseSensitivity = 0.08f;
 
     [Header("Gravity")]
     [SerializeField] private float gravity = -20f;
-
-    [Header("Animation")]
-    [SerializeField] private Animator animator;
 
     private CharacterController controller;
 
@@ -31,9 +30,35 @@ public class PlayerController : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
 
-        if (animator == null)
+        if (playerAnimator == null)
         {
-            animator = GetComponentInChildren<Animator>();
+            playerAnimator = GetComponent<PlayerAnimator>();
+        }
+
+        if (stateMachine == null)
+        {
+            stateMachine = GetComponent<PlayerStateMachine>();
+        }
+
+        if (characterData == null)
+        {
+            Debug.LogError(
+                "CharacterData is missing on Player!"
+            );
+        }
+
+        if (playerAnimator == null)
+        {
+            Debug.LogError(
+                "PlayerAnimator is missing on Player!"
+            );
+        }
+
+        if (stateMachine == null)
+        {
+            Debug.LogError(
+                "PlayerStateMachine is missing on Player!"
+            );
         }
     }
 
@@ -43,32 +68,22 @@ public class PlayerController : MonoBehaviour
         Move();
         ApplyGravity();
         UpdateAnimation();
+        UpdateState();
     }
-
-    // =========================================
-    // INPUT
-    // =========================================
 
     public void OnMove(InputAction.CallbackContext context)
     {
         moveInput = context.ReadValue<Vector2>();
-
-        Debug.Log("Move Input: " + moveInput);
     }
 
     public void OnSprint(InputAction.CallbackContext context)
     {
         isSprinting = context.ReadValueAsButton();
-
-        Debug.Log("Sprint: " + isSprinting);
     }
-
-    // =========================================
-    // MOUSE ROTATION
-    // =========================================
 
     private void RotateWithMouse()
     {
+        // Khi chết vẫn cho phép camera/player rotation.
         if (Mouse.current == null)
         {
             return;
@@ -79,7 +94,8 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        Vector2 mouseDelta = Mouse.current.delta.ReadValue();
+        Vector2 mouseDelta =
+            Mouse.current.delta.ReadValue();
 
         float mouseX = mouseDelta.x;
 
@@ -88,7 +104,8 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        float rotationAmount = mouseX * mouseSensitivity;
+        float rotationAmount =
+            mouseX * mouseSensitivity;
 
         transform.Rotate(
             0f,
@@ -97,12 +114,20 @@ public class PlayerController : MonoBehaviour
         );
     }
 
-    // =========================================
-    // MOVEMENT
-    // =========================================
-
     private void Move()
     {
+        // Player đã chết thì không được di chuyển.
+        if (stateMachine != null &&
+            stateMachine.CurrentState == PlayerState.Dead)
+        {
+            return;
+        }
+
+        if (characterData == null)
+        {
+            return;
+        }
+
         Vector3 forward = transform.forward;
         Vector3 right = transform.right;
 
@@ -115,7 +140,6 @@ public class PlayerController : MonoBehaviour
             1f
         );
 
-        // Player quay theo hướng di chuyển
         if (direction.sqrMagnitude > 0.01f)
         {
             Quaternion targetRotation =
@@ -124,13 +148,15 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(
                 transform.rotation,
                 targetRotation,
-                rotationSpeed * Time.deltaTime
+                characterData.rotationSpeed *
+                Time.deltaTime
             );
         }
 
-        float currentSpeed = isSprinting
-            ? runSpeed
-            : walkSpeed;
+        float currentSpeed =
+            isSprinting
+                ? characterData.runSpeed
+                : characterData.walkSpeed;
 
         controller.Move(
             direction *
@@ -139,59 +165,38 @@ public class PlayerController : MonoBehaviour
         );
     }
 
-    // =========================================
-    // ANIMATION
-    // =========================================
-
     private void UpdateAnimation()
     {
-        if (animator == null)
+        if (playerAnimator == null)
         {
-            Debug.LogWarning("Animator is NULL!");
             return;
         }
 
-        float movementAmount = moveInput.magnitude;
-
-        float animationSpeed = 0f;
-
-        // Không di chuyển
-        if (movementAmount <= 0.01f)
+        // Khi chết không cập nhật Speed nữa.
+        if (stateMachine != null &&
+            stateMachine.CurrentState == PlayerState.Dead)
         {
-            animationSpeed = 0f;
-        }
-        // Đang chạy
-        else if (isSprinting)
-        {
-            animationSpeed = 1f;
-        }
-        // Đang đi bộ
-        else
-        {
-            animationSpeed = 0.5f;
+            return;
         }
 
-        // Gửi Speed vào Animator
-        animator.SetFloat(
-            "Speed",
-            animationSpeed
-        );
-
-        // Đọc ngược lại Speed từ Animator
-        float animatorSpeed =
-            animator.GetFloat("Speed");
-
-        Debug.Log(
-            "Animation Speed = " +
-            animationSpeed +
-            " | Animator Speed = " +
-            animatorSpeed
+        playerAnimator.UpdateMovementAnimation(
+            moveInput,
+            isSprinting
         );
     }
 
-    // =========================================
-    // GRAVITY
-    // =========================================
+    private void UpdateState()
+    {
+        if (stateMachine == null)
+        {
+            return;
+        }
+
+        stateMachine.UpdateMovementState(
+            moveInput,
+            isSprinting
+        );
+    }
 
     private void ApplyGravity()
     {
@@ -209,4 +214,6 @@ public class PlayerController : MonoBehaviour
             Time.deltaTime
         );
     }
+
+
 }
